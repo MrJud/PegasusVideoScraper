@@ -1,0 +1,10 @@
+# local.properties — NON committare su git (già in .gitignore)
+# Generare il keystore con:
+#   keytool -genkey -v -keystore keystore.jks -keyalg RSA -keysize 2048 -validity 10000 -alias pegasus
+#
+# Poi compilare le righe qui sotto:
+sdk.dir=C\:\\Users\\judel\\AppData\\Local\\Android\\Sdk
+storeFile=../keystore.jks
+storePassword=CHANGEME
+keyAlias=pegasus
+keyPassword=CHANGEME

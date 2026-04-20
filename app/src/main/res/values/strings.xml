@@ -1,0 +1,13 @@
+<resources>
+    <string name="app_name">Pegasus Video Player</string>
+    <string name="close">Chiudi</string>
+    <string name="err_invalid_uri">URI non valido o URL mancante</string>
+    <string name="err_http_not_allowed">Solo URL HTTPS sono supportati</string>
+    <string name="err_network">Connessione di rete assente o timeout</string>
+    <string name="err_server_rejected">Il server ha rifiutato la richiesta (URL scaduto?)</string>
+    <string name="err_not_found">Video non trovato sul server</string>
+    <string name="err_format">Formato video non supportato</string>
+    <string name="err_generic">Errore riproduzione: %1$s</string>
+    <string name="storage_permission_required">Permesso storage richiesto per il download</string>
+    <string name="downloading">Download in corso… %1$d%%</string>
+</resources>
