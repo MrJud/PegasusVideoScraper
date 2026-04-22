@@ -23,9 +23,9 @@ A guide for Pegasus Frontend theme authors who want to add YouTube trailer searc
 
 ## 2. URI scheme contract
 
-All interactions go through `Qt.openUrlExternally("restory-video://...")`. The APK is always the passive listener; the theme is the caller.
+All interactions go through `Qt.openUrlExternally("(your_theme)-video://...")`. The APK is always the passive listener; the theme is the caller.
 
-> **Note:** The current scheme is `restory-video://` for historical reasons. A future rename to `pegasus-video://` will keep the old scheme as a deprecated alias for ≥2 releases.
+> **Note:** The current scheme is `(your_theme)-video://` for historical reasons. A future rename to `pegasus-video://` will keep the old scheme as a deprecated alias for ≥2 releases.
 
 ### 2.1 `play` — stream or play a video
 
@@ -86,8 +86,8 @@ restory-video://download?url=<YT_URL>&gameKey=<KEY>&out=<JSON_PATH>
 
 The APK validates the `out` path to prevent path-traversal attacks. Only paths under these directories are accepted:
 
-- `/storage/emulated/0/ReStory/search/`
-- `/storage/emulated/0/ReStory/trailers/`
+- `/storage/emulated/0/(your_theme)/search/`
+- `/storage/emulated/0/(your_theme)/trailers/`
 
 Third-party theme directories require an APK update with an extended allowlist (planned v1.1+).
 
@@ -95,7 +95,7 @@ Third-party theme directories require an APK update with an extended allowlist (
 
 **Recommended naming pattern:**
 ```
-/sdcard/ReStory/search/yt_<timestamp>_<rnd>.json
+/sdcard/(your_theme)/search/yt_<timestamp>_<rnd>.json
 ```
 
 ---
@@ -396,7 +396,7 @@ On first run the APK requests `MANAGE_EXTERNAL_STORAGE` (required to write to `/
 
 | Component | Version |
 |---|---|
-| URI scheme | `restory-video://` v1 |
+| URI scheme | `(your_theme)-video://` v1 |
 | JSON callback schema | `1` |
 | APK minimum version | 1.0.0 |
 
