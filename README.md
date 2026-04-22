@@ -53,13 +53,13 @@ All interactions happen through a custom URI scheme (`(your_theme)-video://`). T
 ### `(your_theme)-video://search` — search YouTube
 
 ```
-restory-video://search?q=<QUERY>&out=<JSON_PATH>
+(your_theme)-video://search?q=<QUERY>&out=<JSON_PATH>
 ```
 
 ### `(your_theme)-video://download` — download a trailer
 
 ```
-restory-video://download?url=<YT_URL>&gameKey=<KEY>&out=<JSON_PATH>
+(your_theme)-video://download?url=<YT_URL>&gameKey=<KEY>&out=<JSON_PATH>
 ```
 
 Results are written to `out` as a JSON file. See [INTEGRATION_GUIDE.md](INTEGRATION_GUIDE.md) for the full schema and QML polling pattern.
