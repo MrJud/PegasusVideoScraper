@@ -23,14 +23,14 @@ A guide for Pegasus Frontend theme authors who want to add YouTube trailer searc
 
 ## 2. URI scheme contract
 
-All interactions go through `Qt.openUrlExternally("restory-video://...")`. The APK is always the passive listener; the theme is the caller.
+All interactions go through `Qt.openUrlExternally("pegasus-video://...")`. The APK is always the passive listener; the theme is the caller.
 
-> **Note:** The current scheme is `restory-video://` for historical reasons. A future rename to `pegasus-video://` will keep the old scheme as a deprecated alias for ≥2 releases.
+> **Note:** The current scheme is `pegasus-video://` for all Pegasus Frontend themes.
 
 ### 2.1 `play` — stream or play a video
 
 ```
-restory-video://play?url=<URL>&title=<STR>&gameKey=<STR>
+pegasus-video://play?url=<URL>&title=<STR>&gameKey=<STR>
 ```
 
 | Parameter | Type | Required | Notes |
@@ -47,7 +47,7 @@ function openTrailer(url, title, gameKey) {
         Qt.openUrlExternally(url);   // desktop fallback: system browser/player
         return;
     }
-    var uri = "restory-video://play"
+    var uri = "pegasus-video://play"
             + "?url="     + encodeURIComponent(url)
             + "&title="   + encodeURIComponent(title || "")
             + "&gameKey=" + encodeURIComponent(gameKey || "");
@@ -60,7 +60,7 @@ function openTrailer(url, title, gameKey) {
 ### 2.2 `search` — search YouTube
 
 ```
-restory-video://search?q=<QUERY>&out=<FILE_PATH>
+pegasus-video://search?q=<QUERY>&out=<FILE_PATH>
 ```
 
 | Parameter | Type | Required | Notes |
@@ -71,7 +71,7 @@ restory-video://search?q=<QUERY>&out=<FILE_PATH>
 ### 2.3 `download` — download a trailer
 
 ```
-restory-video://download?url=<YT_URL>&gameKey=<KEY>&out=<JSON_PATH>
+pegasus-video://download?url=<YT_URL>&gameKey=<KEY>&out=<JSON_PATH>
 ```
 
 | Parameter | Type | Required | Notes |
@@ -95,7 +95,7 @@ Third-party theme directories require an APK update with an extended allowlist (
 
 **Recommended naming pattern:**
 ```
-/sdcard/ReStory/search/yt_<timestamp>_<rnd>.json
+/sdcard/PegasusVideoScraper/search/yt_<timestamp>_<rnd>.json
 ```
 
 ---
@@ -127,7 +127,7 @@ Third-party theme directories require an APK update with an extended allowlist (
 
 ```json
 { "schema": 1, "action": "download", "status": "progress", "progress": 0.45 }
-{ "schema": 1, "action": "download", "status": "ok", "localPath": "/sdcard/ReStory/trailers/celeste_snes.mp4" }
+{ "schema": 1, "action": "download", "status": "ok", "localPath": "/sdcard/PegasusVideoScraper/trailers/celeste_snes.mp4" }
 { "schema": 1, "action": "download", "status": "error", "error": "Network timeout" }
 ```
 
@@ -143,7 +143,7 @@ function openTrailer(url, title, gameKey) {
         Qt.openUrlExternally(url);
         return;
     }
-    var uri = "restory-video://play"
+    var uri = "pegasus-video://play"
             + "?url="     + encodeURIComponent(url)
             + "&title="   + encodeURIComponent(title || "")
             + "&gameKey=" + encodeURIComponent(gameKey || "");
@@ -189,13 +189,13 @@ function searchYouTube(term) {
     var seq  = _ytSeq;
     var ts   = Date.now();
     var rnd  = Math.floor(Math.random() * 0xFFFF).toString(16);
-    var path = "/sdcard/ReStory/search/yt_" + ts + "_" + rnd + ".json";
+    var path = "/sdcard/PegasusVideoScraper/search/yt_" + ts + "_" + rnd + ".json";
 
     _ytActiveSeq = seq;
     _ytFile      = path;
     _ytStartedAt = ts;
 
-    var uri = "restory-video://search"
+    var uri = "pegasus-video://search"
             + "?q="   + encodeURIComponent(q)
             + "&out=" + encodeURIComponent(path);
 
@@ -271,13 +271,13 @@ function startDownload(ytPageUrl, gameKey) {
     var seq     = _dlSeq;
     var ts      = Date.now();
     var keyFile = gameKey.replace(/\|/g, "_");
-    var outPath = "/sdcard/ReStory/trailers/dl_" + keyFile + "_" + ts + ".json";
+    var outPath = "/sdcard/PegasusVideoScraper/trailers/dl_" + keyFile + "_" + ts + ".json";
 
     _dlActiveSeq = seq;
     _dlFile      = outPath;
     _dlStartedAt = ts;
 
-    var uri = "restory-video://download"
+    var uri = "pegasus-video://download"
             + "?url="     + encodeURIComponent(ytPageUrl)
             + "&gameKey=" + encodeURIComponent(gameKey)
             + "&out="     + encodeURIComponent(outPath);
@@ -396,9 +396,10 @@ On first run the APK requests `MANAGE_EXTERNAL_STORAGE` (required to write to `/
 
 | Component | Version |
 |---|---|
-| URI scheme | `restory-video://` v1 |
+| URI scheme | `pegasus-video://` v1 |
 | JSON callback schema | `1` |
 | APK minimum version | 1.0.0 |
 
 Breaking changes will be documented in [MAINTENANCE.md](MAINTENANCE.md) with a deprecation period. Subscribe to release notifications on GitHub.
+
 
