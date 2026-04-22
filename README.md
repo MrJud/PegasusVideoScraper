@@ -1,65 +1,105 @@
-# Pegasus Video Player
+# PegasusVideoScraper
 
-APK Android per la riproduzione di video trailer da **Pegasus Frontend** (ReStory theme).
+A companion app for **Pegasus Frontend** themes that enables YouTube trailer search, video streaming, and offline trailer download — entirely from QML, with no native code required in the theme.
 
-## Funzionamento
+> **Current compatibility:** [ReStory theme](https://github.com/MrJud/ReStory) only.
+> Windows and Linux builds are planned for a future release.
 
-Pegasus chiama `Qt.openUrlExternally("restory-video://play?url=...&title=...&gameKey=...")`.
-L'APK intercetta lo schema, avvia ExoPlayer in fullscreen landscape e torna a Pegasus al termine.
+---
 
-## Requisiti
+## What it does
 
-- Android Studio Meerkat (o superiore)
-- Android SDK 35
-- ADB nel PATH
-- Odin2 connesso via USB (device `69bdb979`)
+| Feature | Description |
+|---|---|
+| **Stream any video** | Opens a fullscreen player for any HTTPS MP4, HLS, DASH, or YouTube URL |
+| **Search YouTube** | Headless search via NewPipeExtractor — results delivered as a JSON callback file |
+| **Download trailers** | Downloads a YouTube video to local storage; QML polls a progress JSON until done |
 
-## Primo avvio
+All interactions happen through a custom URI scheme (`restory-video://`). The theme calls `Qt.openUrlExternally()`, the app handles it silently or opens a fullscreen player, and results are returned via JSON files on shared storage.
 
-```bash
-# 1. Copia local.properties.template → local.properties e compila i campi
-# 2. Genera keystore (solo per release)
-keytool -genkey -v -keystore keystore.jks -keyalg RSA -keysize 2048 -validity 10000 -alias pegasus
+---
 
-# 3. Copia gradle wrapper dal progetto ROM Hasher
-cp ../RetroAchievements-ROM-Hasher/gradlew .
-cp ../RetroAchievements-ROM-Hasher/gradlew.bat .
-cp -r ../RetroAchievements-ROM-Hasher/gradle/wrapper/gradle-wrapper.jar gradle/wrapper/
+## Requirements
 
-# 4. Build debug + deploy
-deploy-android.bat            # debug (default)
-deploy-android.bat release    # release firmato
-```
+- Android 8.0+ (API 26+), ARM64
+- Pegasus Frontend installed on the same device
+- `MANAGE_EXTERNAL_STORAGE` permission granted on first launch
+
+---
+
+## Installation
+
+1. Download the latest APK from [Releases](../../releases/latest).
+2. Install it on your device (`adb install -r -g pegasus-video-scraper.apk`).
+3. Open the app once from the launcher and grant **"All files access"** when prompted.
+4. Done — the theme can now invoke it via URI.
+
+---
 
 ## URI scheme
 
-```
-restory-video://play?url=HTTPS_URL&title=TITOLO&gameKey=CHIAVE
-```
-
-- `url`: URL mp4/webm HTTPS (solo HTTPS, HTTP rifiutato)
-- `title`: titolo visualizzato in overlay
-- `gameKey`: chiave cache (es. `supermarioworld|snes`) — usata per download offline (Fase 2)
-- `download=true`: (opzionale) scarica prima di riprodurre
-
-## Struttura
+### `restory-video://play` — stream or play a video
 
 ```
-app/src/main/
-  java/com/pegasus/videoplayer/
-    VideoPlayerActivity.kt   — Activity principale
-    UriParams.kt             — Parsing + validazione URI
-    PlayerErrorMapper.kt     — Messaggi errore ExoPlayer
-  res/
-    layout/activity_video_player.xml
-    values/strings.xml
-    values/themes.xml
-    drawable/bg_overlay.xml
-    drawable/ic_close.xml
-  AndroidManifest.xml
+restory-video://play?url=<HTTPS_URL>&title=<TITLE>&gameKey=<KEY>
 ```
 
-## Fase 2 — Download offline
+| Parameter | Required | Notes |
+|---|---|---|
+| `url` | yes | HTTPS only. Supports MP4, HLS, DASH, YouTube page URL |
+| `title` | no | Shown in the top overlay bar |
+| `gameKey` | recommended | `<game>\|<platform>` normalized to `[a-z0-9]`. Used for download file naming |
 
-Aggiungere `TrailerDownloader.kt` e `TrailerCallbackWriter.kt`.
-Vedi `APK_VIDEO_PLAYER_IMPLEMENTATION.md` in `Pegasus Frontend/ReStory/` per dettagli.
+### `restory-video://search` — search YouTube
+
+```
+restory-video://search?q=<QUERY>&out=<JSON_PATH>
+```
+
+### `restory-video://download` — download a trailer
+
+```
+restory-video://download?url=<YT_URL>&gameKey=<KEY>&out=<JSON_PATH>
+```
+
+Results are written to `out` as a JSON file. See [INTEGRATION_GUIDE.md](INTEGRATION_GUIDE.md) for the full schema and QML polling pattern.
+
+---
+
+## Building from source
+
+```bash
+# Debug build
+.\gradlew.bat assembleDebug
+
+# Install on connected device
+adb install -r -g app\build\outputs\apk\debug\app-debug.apk
+```
+
+Requirements: Android Studio Meerkat+, SDK 35, JDK 17.
+
+---
+
+## Theme integration
+
+See [INTEGRATION_GUIDE.md](INTEGRATION_GUIDE.md) for:
+- Minimal 10-line QML snippet (play only)
+- Full search + polling pattern
+- Download + progress callback pattern
+- Error handling and best practices
+
+---
+
+## Roadmap
+
+- [ ] Windows build (native URI handler via registry)
+- [ ] Linux build (via `.desktop` URI scheme)
+- [ ] Rename scheme to `pegasus-video://` (with `restory-video://` alias for ≥2 releases)
+- [ ] Expand storage allowlist for third-party themes
+- [ ] Release signing + Play Store (internal track)
+
+---
+
+## License
+
+MIT
