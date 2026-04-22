@@ -6,28 +6,48 @@ import android.media.AudioFocusRequest
 import android.media.AudioManager
 import android.os.Build
 import android.os.Bundle
+import android.util.Log
 import android.view.View
 import android.view.WindowInsets
 import android.view.WindowInsetsController
 import android.widget.ImageButton
+import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.lifecycleScope
 import androidx.media3.common.AudioAttributes as Media3AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
+import androidx.media3.common.MimeTypes
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
+import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
+import androidx.media3.exoplayer.source.MediaSource
+import androidx.media3.exoplayer.source.MergingMediaSource
 import androidx.media3.ui.PlayerView
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
 
 class VideoPlayerActivity : AppCompatActivity() {
+
+    companion object {
+        private const val TAG = "PegasusVideoPlayer"
+        // User-Agent identico a Chrome Android — necessario per Steam CDN
+        private const val USER_AGENT =
+            "Mozilla/5.0 (Linux; Android 13; Odin2) AppleWebKit/537.36 " +
+            "(KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36"
+    }
 
     private var player: ExoPlayer? = null
     private lateinit var playerView: PlayerView
     private lateinit var titleView: TextView
+    private lateinit var loadingSpinner: ProgressBar
     private var audioManager: AudioManager? = null
     private var audioFocusRequest: AudioFocusRequest? = null
+    private var currentJob: Job? = null
 
     // ──────────────────────────────────────────────────────────────
     // Lifecycle
@@ -37,8 +57,9 @@ class VideoPlayerActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_video_player)
 
-        playerView = findViewById(R.id.playerView)
-        titleView  = findViewById(R.id.videoTitle)
+        playerView    = findViewById(R.id.playerView)
+        titleView     = findViewById(R.id.videoTitle)
+        loadingSpinner = findViewById(R.id.loadingSpinner)
         findViewById<ImageButton>(R.id.btnClose).setOnClickListener { finish() }
 
         setupImmersive()
@@ -49,6 +70,7 @@ class VideoPlayerActivity : AppCompatActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
+        currentJob?.cancel()
         releasePlayer()
         handleIntent(intent)
     }
@@ -57,6 +79,7 @@ class VideoPlayerActivity : AppCompatActivity() {
     override fun onStop()    { super.onStop();    player?.pause() }
 
     override fun onDestroy() {
+        currentJob?.cancel()
         releasePlayer()
         releaseAudioFocus()
         super.onDestroy()
@@ -69,22 +92,116 @@ class VideoPlayerActivity : AppCompatActivity() {
     private fun handleIntent(src: Intent?) {
         val params = UriParams.fromIntentData(src?.data)
         if (params == null) {
+            Log.e(TAG, "Invalid URI: ${src?.data}")
             Toast.makeText(this, R.string.err_invalid_uri, Toast.LENGTH_LONG).show()
             finish()
             return
         }
+        Log.i(TAG, "Playing URL: ${params.url} | title: ${params.title}")
         titleView.text = params.title
-        startPlayback(params.url)
+
+        if (YouTubeUrlDetector.isYouTube(params.url)) {
+            showLoading(true)
+            currentJob = lifecycleScope.launch {
+                try {
+                    val streams = YouTubeResolver.resolve(params.url)
+                    if (params.title.isBlank() && streams.title.isNotBlank()) {
+                        titleView.text = streams.title
+                    }
+                    playYouTubeStreams(streams)
+                } catch (e: ResolveError.AgeRestricted) {
+                    showLoading(false)
+                    Toast.makeText(this@VideoPlayerActivity,
+                        R.string.err_yt_age_gate, Toast.LENGTH_LONG).show()
+                    finish()
+                } catch (e: ResolveError.RegionBlocked) {
+                    showLoading(false)
+                    Toast.makeText(this@VideoPlayerActivity,
+                        R.string.err_yt_region, Toast.LENGTH_LONG).show()
+                    finish()
+                } catch (e: ResolveError.VideoUnavailable) {
+                    showLoading(false)
+                    Toast.makeText(this@VideoPlayerActivity,
+                        R.string.err_yt_unavailable, Toast.LENGTH_LONG).show()
+                    finish()
+                } catch (e: ResolveError.NoStreamFound) {
+                    showLoading(false)
+                    Toast.makeText(this@VideoPlayerActivity,
+                        R.string.err_yt_no_stream, Toast.LENGTH_LONG).show()
+                    finish()
+                } catch (e: ResolveError.SignInRequired) {
+                    showLoading(false)
+                    Toast.makeText(this@VideoPlayerActivity,
+                        R.string.err_yt_sign_in, Toast.LENGTH_LONG).show()
+                    finish()
+                } catch (_: kotlinx.coroutines.CancellationException) {
+                    // Normale: utente ha chiuso o onNewIntent ha annullato
+                } catch (t: Throwable) {
+                    showLoading(false)
+                    Log.e(TAG, "YT resolve error", t)
+                    Toast.makeText(this@VideoPlayerActivity,
+                        R.string.err_yt_generic, Toast.LENGTH_LONG).show()
+                    finish()
+                }
+            }
+        } else {
+            startPlayback(params.url)
+        }
+    }
+
+    private fun playYouTubeStreams(streams: ResolvedStreams) {
+        showLoading(false)
+        when {
+            streams.progressive != null ->
+                startPlayback(streams.progressive.url, streams.progressive.mimeType)
+            streams.dashManifestUrl != null ->
+                startPlayback(streams.dashManifestUrl, MimeTypes.APPLICATION_MPD)
+            streams.dashSeparate != null ->
+                startMergedPlayback(streams.dashSeparate)
+            else -> {
+                Toast.makeText(this, R.string.err_yt_no_stream, Toast.LENGTH_LONG).show()
+                finish()
+            }
+        }
+    }
+
+    private fun showLoading(visible: Boolean) {
+        loadingSpinner.visibility = if (visible) View.VISIBLE else View.GONE
     }
 
     // ──────────────────────────────────────────────────────────────
     // Playback
     // ──────────────────────────────────────────────────────────────
 
-    private fun startPlayback(url: String) {
+    private fun startPlayback(url: String, mimeType: String? = null) {
         requestAudioFocus()
+        val httpFactory = buildHttpDataSourceFactory()
+        val srcFactory  = DefaultMediaSourceFactory(httpFactory)
+        val item = if (mimeType != null) MediaItem.Builder().setUri(url).setMimeType(mimeType).build()
+                   else MediaItem.fromUri(url)
+        launchPlayer(srcFactory, srcFactory.createMediaSource(item))
+    }
 
+    private fun startMergedPlayback(sep: ResolvedStreams.DashSeparate) {
+        requestAudioFocus()
+        val httpFactory = buildHttpDataSourceFactory()
+        val srcFactory  = DefaultMediaSourceFactory(httpFactory)
+        val merged = MergingMediaSource(
+            srcFactory.createMediaSource(MediaItem.Builder().setUri(sep.videoUrl).setMimeType(sep.videoMimeType).build()),
+            srcFactory.createMediaSource(MediaItem.Builder().setUri(sep.audioUrl).setMimeType(sep.audioMimeType).build())
+        )
+        launchPlayer(srcFactory, merged)
+    }
+
+    private fun buildHttpDataSourceFactory() = DefaultHttpDataSource.Factory()
+        .setUserAgent(USER_AGENT)
+        .setConnectTimeoutMs(15_000)
+        .setReadTimeoutMs(15_000)
+        .setAllowCrossProtocolRedirects(true)
+
+    private fun launchPlayer(mediaSourceFactory: DefaultMediaSourceFactory, source: MediaSource) {
         val p = ExoPlayer.Builder(this)
+            .setMediaSourceFactory(mediaSourceFactory)
             .setAudioAttributes(
                 Media3AudioAttributes.Builder()
                     .setContentType(C.AUDIO_CONTENT_TYPE_MOVIE)
@@ -98,6 +215,7 @@ class VideoPlayerActivity : AppCompatActivity() {
 
         p.addListener(object : Player.Listener {
             override fun onPlayerError(error: PlaybackException) {
+                Log.e(TAG, "Playback error: ${error.errorCodeName} — ${error.message}")
                 Toast.makeText(
                     this@VideoPlayerActivity,
                     PlayerErrorMapper.humanMessage(error),
@@ -107,19 +225,21 @@ class VideoPlayerActivity : AppCompatActivity() {
             }
 
             override fun onPlaybackStateChanged(state: Int) {
+                Log.d(TAG, "State: $state")
                 if (state == Player.STATE_ENDED) finish()
             }
         })
 
-        p.setMediaItem(MediaItem.fromUri(url))
+        p.setMediaSource(source)
+        p.playWhenReady = true   // set before prepare — Media3 recommended pattern
         p.prepare()
-        p.playWhenReady = true
 
         playerView.player = p
+        playerView.controllerAutoShow = false   // never auto-show on attach / state change
+        playerView.controllerShowTimeoutMs = 3000
+        playerView.controllerHideOnTouch = true
         playerView.setShowNextButton(false)
         playerView.setShowPreviousButton(false)
-        playerView.controllerShowTimeoutMs   = 5000
-        playerView.controllerHideOnTouch     = true
         playerView.setKeepContentOnPlayerReset(true)
 
         player = p

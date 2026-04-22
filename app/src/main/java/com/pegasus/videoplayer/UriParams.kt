@@ -11,7 +11,7 @@ data class UriParams(
     companion object {
         fun fromIntentData(data: Uri?): UriParams? {
             if (data == null) return null
-            if (!"restory-video".equals(data.scheme, ignoreCase = true)) return null
+            if (!"pegasus-video".equals(data.scheme, ignoreCase = true)) return null
 
             val url = data.getQueryParameter("url")?.trim().orEmpty()
             if (url.isEmpty()) return null

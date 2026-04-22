@@ -6,7 +6,7 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
 
-    <!-- Fase 2: scrittura su /sdcard/ReStory/ -->
+    <!-- Storage: write to /sdcard/PegasusVideoScraper/ -->
     <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE"
         tools:ignore="ScopedStorage" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"
@@ -17,6 +17,7 @@
 
     <application
         android:allowBackup="false"
+        android:name=".VideoPlayerApp"
         android:label="@string/app_name"
         android:theme="@style/Theme.PegasusVideo"
         android:supportsRtl="true"
@@ -32,12 +33,12 @@
             android:excludeFromRecents="true"
             android:exported="true">
 
-            <!-- URI custom da Pegasus: restory-video://play?url=...&title=...&gameKey=... -->
+            <!-- URI scheme from Pegasus theme: pegasus-video://play?url=...&title=...&gameKey=... -->
             <intent-filter android:autoVerify="false">
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="restory-video" android:host="play" />
+                <data android:scheme="pegasus-video" android:host="play" />
             </intent-filter>
 
             <!-- Entry launcher per test manuale e concessione permessi -->
@@ -46,6 +47,41 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
+        </activity>
+
+        <activity
+            android:name=".SearchActivity"
+            android:theme="@android:style/Theme.NoDisplay"
+            android:launchMode="singleInstance"
+            android:taskAffinity=""
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:exported="true">
+
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="pegasus-video" android:host="search" />
+            </intent-filter>
+        </activity>
+
+        <!-- Headless download activity: pegasus-video://download?url=...&gameKey=...&out=... -->
+        <activity
+            android:name=".DownloadActivity"
+            android:theme="@android:style/Theme.NoDisplay"
+            android:launchMode="singleInstance"
+            android:taskAffinity=""
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:exported="true">
+
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="pegasus-video" android:host="download" />
+            </intent-filter>
         </activity>
 
     </application>
